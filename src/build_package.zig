@@ -43,8 +43,9 @@ const PackageFromSource = struct {
     release: []const u8,
     source: []const u8,
     url: []const u8,
-    license: License,
-    license_custom: []const u8,
+    license: []const u8,
+    build_script: []const u8,
+    build_options: BuildOptions,
 
     const License = union(enum) {
         mit,
@@ -61,6 +62,8 @@ const PackageFromSource = struct {
         url: []const u8,
         license: License,
         license_custom: []const u8,
+        build_script: []const u8,
+        build_options: BuildOptions,
     ) !PackageFromSource {
         return .{
             .allocator = allocator,
@@ -72,6 +75,8 @@ const PackageFromSource = struct {
             .url = try allocator.dupe(u8, url),
             .license = license,
             .license_custom = try allocator.dupe(u8, license_custom),
+            .build_script = try allocator.dupe(u8, build_script),
+            .build_options = build_options,
         };
     }
 
@@ -83,9 +88,11 @@ const PackageFromSource = struct {
         self.allocator.free(self.source);
         self.allocator.free(self.url);
         self.allocator.free(self.license_custom);
+        self.allocator.free(self.build_script);
     }
 
     fn fetch(self: *PackageFromSource) !void {
+        std.log.info("Fetching {s}...", .{self.source});
         var downloader = Downloader.init(self.allocator, self.source);
         defer downloader.deinit();
         if (try downloader.download() != .ok) return error.DownloadFailed;
@@ -105,6 +112,7 @@ const PackageFromSource = struct {
     }
 
     fn extract(self: *PackageFromSource) !void {
+        std.log.info("Unpacking into {s}...", .{self.build_options});
         var input_filename: std.ArrayListUnmanaged(u8) = .{};
         defer input_filename.deinit(self.allocator);
         try input_filename.appendSlice(self.allocator, self.name);
@@ -132,21 +140,26 @@ const PackageFromSource = struct {
         try output_dir_path.appendSlice(self.allocator, self.name);
         try output_dir_path.append(self.allocator, '-');
         try output_dir_path.appendSlice(self.allocator, self.version);
-        try output_dir_path.append(self.allocator, '/');
         try std.fs.deleteTreeAbsolute(output_dir_path.items);
         try std.fs.makeDirAbsolute(output_dir_path.items);
-        // const output_dir = try std.fs.openDirAbsolute(output_dir_path.items, .{});
-        const output_dir = try std.fs.openDirAbsolute("/tmp", .{});
+        const output_dir = try std.fs.openDirAbsolute(output_dir_path.items, .{});
         try std.tar.pipeToFileSystem(output_dir, tar_reader, .{ .strip_components = 1 });
     }
 
-    fn build(self: *PackageFromSource, options: BuildOptions) !void {
-        _ = self;
+    fn build(self: *PackageFromSource) !void {
         _ = options;
-        // const file = try std.fs.cwd().openFile("/tmp/")
-        // const gzip_reader = ;
-        // const gzip_writer = {};
-        // try std.compress.gzip.decompress()
+        var cwd: std.ArrayListUnmanaged(u8) = .{};
+        defer cwd.deinit(self.allocator);
+        try cwd.appendSlice(self.allocator, "/tmp/");
+        try cwd.appendSlice(self.allocator, self.name);
+        try cwd.append(self.allocator, '-');
+        try cwd.appendSlice(self.allocator, self.version);
+
+        const result = std.process.Child.run(.{
+            .allocator = self.allocator,
+            .argv = .{ "bash", "-e", self.build_script },
+            .cwd = cwd.items,
+        });
     }
 
     fn validateName(self: PackageFromSource) error.InvalidName!void {
@@ -179,12 +192,16 @@ test {
         "https://github.com/em-dash/hello-test",
         .mit,
         "",
+        \\zig build -Dcpu=baseline -Doptimize=ReleaseFast -Dtarget=x86_64-linux
+    ,
+        .{},
     );
+
     defer package.deinit();
 
     try package.fetch();
     try package.extract();
-    // try package.build(.{});
+    try package.build(.{});
 }
 
 const std = @import("std");

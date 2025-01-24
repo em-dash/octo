@@ -9,4 +9,10 @@ pub fn main() !void {
 
 const std = @import("std");
 
-const build_package = @import("build_package.zig");
+// const Package = @import("Package.zig");
+// const SourcePackage = @import("SourcePackage.zig");
+
+test {
+    std.testing.refAllDeclsRecursive(@import("Package.zig"));
+    std.testing.refAllDeclsRecursive(@import("SourcePackage.zig"));
+}

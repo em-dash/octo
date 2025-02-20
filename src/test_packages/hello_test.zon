@@ -1,0 +1,10 @@
+.{
+    .name = "hello-test",
+    .version = "0.0.1",
+    .description = "A hello world project for fun and profit.",
+    .license = "MIT",
+    .source_url = "https://github.com/em-dash/hello-test/archive/refs/tags/v1.0.0.tar.gz",
+    .build_script =
+    \\zig build install -Doptimize=ReleaseFast -Dcpu=baseline
+    ,
+}

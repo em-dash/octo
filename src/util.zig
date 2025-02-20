@@ -50,7 +50,7 @@ pub const ArchiveType = enum {
     @".zip",
 
     pub fn fromPath(path: []const u8) ?ArchiveType {
-        inline for (@typeInfo(ArchiveType).Enum.fields) |f|
+        inline for (@typeInfo(ArchiveType).@"enum".fields) |f|
             if (std.mem.endsWith(u8, path, f.name)) return @enumFromInt(f.value);
         return null;
     }

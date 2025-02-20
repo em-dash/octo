@@ -4,20 +4,20 @@ allocator: std.mem.Allocator,
 name: []const u8,
 version: Version,
 description: []const u8,
-/// https://spdx.org/licenses/
-/// https://spdx.github.io/spdx-spec/v3.0.1/annexes/spdx-license-expressions/
+// https://spdx.org/licenses/
+// https://spdx.github.io/spdx-spec/v3.0.1/annexes/spdx-license-expressions/
 license: []const u8,
-run_dependencies: []const Dependency,
+// run_dependencies: []const Dependency,
 
 name_version_string: ?[]const u8 = null,
 
 const Package = @This();
 
-pub const Dependency = struct {
-    name: []const u8,
-    minimum: Version,
-    maximum: Version,
-};
+// pub const Dependency = struct {
+//     name: []const u8,
+//     minimum: Version,
+//     maximum: Version,
+// };
 
 const Version = struct {
     string: []const u8,

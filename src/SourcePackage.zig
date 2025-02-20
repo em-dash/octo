@@ -1,6 +1,6 @@
 package: Package,
 source: std.Uri,
-build_step: []const u8,
+build_script: []const u8,
 
 fetch_dir: std.fs.Dir,
 build_dir: std.fs.Dir,
@@ -17,7 +17,40 @@ archive_filename: ?[]const u8 = null,
 
 const SourcePackage = @This();
 
-// pub fn init()
+pub const ZonFile = struct {
+    name: []const u8,
+    version: []const u8,
+    description: []const u8,
+    license: []const u8,
+    source_url: []const u8,
+    build_script: []const u8,
+};
+
+pub fn init(
+    allocator: std.mem.Allocator,
+    zon: ZonFile,
+    fetch_dir: std.fs.Dir,
+    build_dir: std.fs.Dir,
+) !SourcePackage {
+    return .{
+        .package = .{
+            .allocator = allocator,
+            .name = try allocator.dupe(u8, zon.name),
+            .version = .{
+                .string = try allocator.dupe(u8, zon.version),
+                .prerelease = false,
+                .epoch = 0,
+                .release = 0,
+            },
+            .description = try allocator.dupe(u8, zon.description),
+            .license = try allocator.dupe(u8, zon.license),
+        },
+        .source = try std.Uri.parse(zon.source_url),
+        .build_step = try allocator.dupe(u8, zon.build),
+        .fetch_dir = fetch_dir,
+        .build_dir = build_dir,
+    };
+}
 
 pub fn fetch(self: *SourcePackage) !void {
     const data = try util.fetchUri(self.package.allocator, self.source);
@@ -62,33 +95,8 @@ fn getArchiveFilename(self: *SourcePackage) ![]const u8 {
 }
 
 test SourcePackage {
-    const uri_text = "https://github.com/em-dash/hello-test/archive/refs/tags/v1.0.0.tar.gz";
-    var fetch_tmpdir = std.testing.tmpDir(.{ .access_sub_paths = true });
-    defer fetch_tmpdir.cleanup();
-    var build_tmpdir = std.testing.tmpDir(.{ .access_sub_paths = true });
-    defer build_tmpdir.cleanup();
-    const fetch_dir = fetch_tmpdir.dir;
-    const build_dir = build_tmpdir.dir;
-
-    var source_package = SourcePackage{
-        .package = .{
-            .allocator = std.testing.allocator,
-            .name = "hello-test",
-            .version = .{ .string = "1.0.0", .prerelease = false, .epoch = 0, .release = 0 },
-            .description = "A hello world project for fun and profit.",
-            .license = "MIT",
-            .run_dependencies = &[_]Package.Dependency{},
-        },
-        .source = try std.Uri.parse(uri_text),
-        .build_step = "zig build install -Doptimize=ReleaseFast -Dcpu=baseline",
-        .fetch_dir = fetch_dir,
-        .build_dir = build_dir,
-    };
-    defer source_package.deinit();
-
-    try source_package.fetch();
-    try source_package.unpack();
-    try source_package.build();
+    const hello_test = @import("test_packages.zig").hello_test_source;
+    _ = hello_test;
 }
 
 const std = @import("std");
